@@ -82,16 +82,7 @@ async def create_todo_commit(request: Request,
     todo_model.priority = priority
     todo_model.complete = False
     todo_model.owner_id = user.get('id')
-    # print(todo_model.__dict__)
-    # for i in range(1, 40):
-    #     tm = models.Todos()
-    #     tm.title = f"Todo {i}"
-    #     tm.description = f"Todo description {i}"
-    #     tm.priority = 1 if i % 2 == 0 else 4
-    #     tm.complete = False if i % 2 == 0 else True
-    #     tm.owner_id = user.get('id')
-    #     db.add(tm)
-    #     db.commit()
+
     db.add(todo_model)
     db.commit()
 

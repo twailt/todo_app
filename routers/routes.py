@@ -106,12 +106,21 @@ async def create_new_user(request: Request, db: Session = Depends(get_db)):
     user.hashed_password = get_password_hash(form.password)
     user.is_active = True
 
+
+
     db.add(user)
     db.commit()
 
     msg = 'User successfully created'
     response = templates.TemplateResponse('user/login.html', {'request': request, 'msg': msg})
     return response
+
+@router.get('/reset', response_class=HTMLResponse)
+async def reset_page(request: Request):
+    user = await get_current_user(request)
+    if user is not None:
+        return RedirectResponse(url='/', status_code=status.HTTP_302_FOUND)
+    return templates.TemplateResponse('user/Reset_Password.html', {'request': request})
 
 
 def get_user_exception():
