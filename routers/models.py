@@ -1,19 +1,17 @@
 import sys
 
-from fastapi import HTTPException, APIRouter, Request
+from fastapi import HTTPException, Request
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from typing import Optional
-from fastapi.security import OAuth2PasswordBearer
 from starlette import status
 
 import models
-from database import engine, SessionLocal
+from database import engine
 from models import Users
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 
-from fastapi.templating import Jinja2Templates
 import os
 from dotenv import load_dotenv
 from .connection import get_db
