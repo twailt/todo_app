@@ -7,13 +7,19 @@ import sys
 import models
 from database import engine
 from models import Users
-from datetime import timedelta
 
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from starlette.responses import RedirectResponse
 from .models import authenticate_user, get_db,create_access_token,ACCESS_TOKEN_EXPIRE_MINUTES,get_current_user,get_password_hash
-from .forms import LoginForm, RegisterForm
+from .forms import LoginForm, RegisterForm, ResetForm, NewPasswordForm
+from sendgrid.helpers.mail import Mail
+from pydantic import BaseModel
+from sendgrid import SendGridAPIClient
+from jose import JWTError, jwt
+import os
+from datetime import datetime, timedelta
+import models
 
 sys.path.append('..')
 models.Base.metadata.create_all(bind=engine)
@@ -22,7 +28,9 @@ templates = Jinja2Templates(directory='templates')
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-
+SECRET_KEY = os.getenv('SECRET_KEY')
+SENDGRID_KEY = os.getenv('SENDGRID_KEY')
+ALGORITHM = "HS256"
 
 router = APIRouter(
     prefix='/routes',
@@ -122,6 +130,68 @@ async def reset_page(request: Request):
         return RedirectResponse(url='/', status_code=status.HTTP_302_FOUND)
     return templates.TemplateResponse('user/Reset_Password.html', {'request': request})
 
+@router.post('/reset', response_class=HTMLResponse)
+async def reset_password(request: Request, db: Session = Depends(get_db)):
+    form = ResetForm(request)
+    await form.create_reset_form()
+
+    user_model = db.query(models.Users).filter(models.Users.email == form.email).first()
+    if user_model is None:
+        return 'Invalid User'
+
+    # Send password reset email
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user_model.username, 'id': user_model.id},
+        expires_delta=access_token_expires)
+
+    print(f'Click <a href="http://127.0.0.1:8000/routes/new_password/{access_token}">here</a> to reset your password.')
+
+    sendgrid_client = SendGridAPIClient(api_key=SENDGRID_KEY)
+    message = Mail(
+        from_email='bohdankozin@gmail.com',
+        to_emails=form.email,
+        subject='Reset your password',
+        html_content=f'Click <a href="http://127.0.0.1:8000/routes/new_password/{access_token}">here</a> to reset your password.'
+    )
+    try:
+        response = sendgrid_client.send(message)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+    return RedirectResponse(url='/', status_code=status.HTTP_302_FOUND)
+
+
+@router.get('/new_password/{token}', response_class=HTMLResponse)
+async def new_password_page(token: str, request: Request):
+    return templates.TemplateResponse('user/new_password.html', {'request': request, 'token': token})
+
+@router.post('/new_password/{token}', response_class=HTMLResponse)
+async def new_password_page(token: str, request: Request, db: Session = Depends(get_db)):
+    form = NewPasswordForm(request)
+    await form.create_new_password_form()
+
+    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    user_id: int = payload.get("id")
+    user = db.query(models.Users).filter(models.Users.id == user_id).first()
+    if user is None:
+        return RedirectResponse(url='/', status_code=status.HTTP_302_FOUND)
+
+    user.hashed_password = get_password_hash(form.password)
+
+    db.commit()
+    db.refresh(user)
+    return RedirectResponse(url='/', status_code=status.HTTP_302_FOUND)
+
+# router = APIRouter()
+
+# @router.post("/reset_password")  # Оновлений маршрут
+# async def reset_password(email: str):
+#     # Логіка скидання пароля через SendGrid
+#     # Після успішного відправлення листа, поверніть сторінку підтвердження
+#     return {"message": "Password reset email sent successfully"}
+
+
 
 def get_user_exception():
     credentials_exception = HTTPException(
@@ -139,3 +209,8 @@ def token_exception():
         headers={"WWW-Authenticate": "Bearer"},
     )
     return token_exception_response
+
+
+
+
+

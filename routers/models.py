@@ -15,6 +15,8 @@ from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
 from .connection import get_db
+# import jwt
+# from datetime import datetime, timedelta
 
 load_dotenv()
 
@@ -33,6 +35,10 @@ class CreateUser(BaseModel):
     password: str
     phone_number: Optional[str]
 
+
+# class CreateToken(BaseModel):
+#     user_id: str
+#     token: Optional [str]
 
 class LoginForm:
     def __init__(self, request: Request):

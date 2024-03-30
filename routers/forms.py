@@ -32,3 +32,24 @@ class RegisterForm:
         self.password2 = form.get('password2')
         self.firstname = form.get('firstname')
         self.lastname = form.get('lastname')
+
+class NewPasswordForm:
+    def __init__(self, request: Request):
+        self.request: Request = request
+        self.password: Optional[str] = None
+        self.password2: Optional[str] = None
+
+    async def create_new_password_form(self):
+        form = await self.request.form()
+        self.password = form.get('password')
+        self.password2 = form.get('password2')
+
+class ResetForm:
+
+    def __init__(self, request: Request):
+        self.request: Request = request
+        self.email: Optional[str] = None
+
+    async def create_reset_form(self):
+        form = await self.request.form()
+        self.email = form.get('email')
